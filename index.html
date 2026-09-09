@@ -1,0 +1,301 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
+<title>Saharat Tratangsakul — 3D Portfolio</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@400;500;600;700;800&family=Rajdhani:wght@500;600;700&display=swap');
+*{box-sizing:border-box}
+html,body{margin:0;width:100%;height:100%;overflow:hidden;background:#0a0d0f;color:#eee;font-family:Rajdhani,Arial,sans-serif}
+#app{position:fixed;inset:0}
+canvas{display:block}
+#scene{position:absolute;inset:0}
+.vignette{position:absolute;inset:0;pointer-events:none;background:
+ radial-gradient(circle at 52% 48%,transparent 28%,rgba(0,0,0,.2) 62%,rgba(0,0,0,.8) 100%),
+ linear-gradient(90deg,rgba(5,7,8,.82),transparent 35%,transparent 70%,rgba(5,7,8,.5))}
+.hud{position:absolute;inset:0;pointer-events:none}
+.top{height:68px;border-bottom:1px solid rgba(255,255,255,.13);background:rgba(7,9,10,.72);display:flex;align-items:center;padding:0 30px;gap:34px;pointer-events:auto;backdrop-filter:blur(5px)}
+.logo{font-family:'Barlow Condensed';font-weight:800;font-size:27px;letter-spacing:1px;border:3px solid #eee;padding:0 10px;line-height:32px}
+.brand{font-size:11px;letter-spacing:3px;color:#aaa;line-height:12px}
+nav{display:flex;gap:30px;margin-left:35px;height:100%;align-items:center}
+nav button{height:100%;border:0;background:none;color:#92969a;font:600 15px Rajdhani;letter-spacing:2px;cursor:pointer;position:relative}
+nav button.active,nav button:hover{color:#fff}
+nav button.active:after{content:"";position:absolute;bottom:0;left:0;right:0;height:3px;background:#f2b900}
+.profile{position:absolute;left:42px;top:110px;width:360px;text-shadow:0 3px 14px #000}
+.kicker{font-size:18px;letter-spacing:7px;color:#f2b900;font-weight:700}
+h1{font-family:'Barlow Condensed';font-size:65px;line-height:.82;margin:12px 0 18px;text-transform:uppercase;letter-spacing:2px;font-weight:800}
+.meta{display:grid;gap:8px;font-size:18px;color:#ddd}
+.meta b{color:#f2b900}
+.panel{position:absolute;background:rgba(8,10,11,.67);border:1px solid rgba(255,255,255,.15);box-shadow:0 12px 40px rgba(0,0,0,.35);backdrop-filter:blur(7px);pointer-events:auto}
+.map{right:32px;top:105px;width:260px;padding:16px}
+.map .title{font-size:12px;letter-spacing:3px;color:#aaa}.map strong{display:block;font-size:26px;margin-top:2px}.map span{color:#f2b900}
+.mode{left:42px;bottom:110px;width:320px;padding:14px 17px}
+.mode small{color:#999;letter-spacing:2px}.mode strong{font-size:21px}
+.start{left:42px;bottom:31px;width:320px;height:62px;border:0;background:#f2b900;color:#111;font:800 35px 'Barlow Condensed';letter-spacing:3px;cursor:pointer;box-shadow:0 7px 0 #6f5500,0 15px 35px #0008;pointer-events:auto}
+.start:hover{filter:brightness(1.15);transform:translateY(-1px)}
+.right{right:32px;bottom:90px;width:240px;padding:15px}
+.right h3{margin:0 0 10px;font-size:13px;letter-spacing:3px;color:#aaa}
+.skill{margin:10px 0}.skill label{display:flex;justify-content:space-between;font-size:13px}.bar{height:5px;background:#303438;margin-top:5px}.bar i{display:block;height:100%;width:90%;background:#f2b900}
+.footer{position:absolute;bottom:0;left:0;right:0;height:58px;background:rgba(5,7,8,.78);border-top:1px solid #ffffff18;display:flex;align-items:center;justify-content:center;gap:15px;color:#bbb;font-size:14px;letter-spacing:2px}
+.tip{position:absolute;bottom:72px;left:50%;transform:translateX(-50%);font-size:14px;color:#ddd;letter-spacing:1px;background:#0008;padding:8px 14px;border:1px solid #fff2}
+.cursor{position:fixed;z-index:20;width:22px;height:22px;border:1px solid #f2b900;border-radius:50%;pointer-events:none;transform:translate(-50%,-50%);mix-blend-mode:screen}
+.cursor:after{content:"";position:absolute;left:50%;top:50%;width:4px;height:4px;background:#fff;border-radius:50%;transform:translate(-50%,-50%)}
+.hit{position:fixed;z-index:19;pointer-events:none;transform:translate(-50%,-50%);font-size:25px;color:#ffd23b;text-shadow:0 0 15px #f90;animation:hit .42s ease-out forwards}
+.hit:before{content:"";position:absolute;width:4px;height:42px;background:#ffd23b;left:0;top:-5px;box-shadow:0 0 12px #ff8c00;transform:rotate(45deg)}
+@keyframes hit{0%{opacity:1;transform:translate(-50%,-50%) scale(.7)}100%{opacity:0;transform:translate(-50%,-70%) scale(1.8)}}
+.toast{position:absolute;left:50%;top:78px;transform:translateX(-50%);background:#0b0d0eeb;border-left:3px solid #f2b900;padding:10px 18px;opacity:0;transition:.25s;pointer-events:none}
+.toast.show{opacity:1}
+@media(max-width:800px){
+ .top{padding:0 12px;gap:10px}.brand,nav{display:none}.logo{font-size:21px}
+ .profile{left:18px;top:90px;width:270px}.kicker{font-size:13px;letter-spacing:4px}h1{font-size:43px}
+ .map{right:12px;top:84px;width:170px}.mode{left:18px;bottom:100px;width:250px}.start{left:18px;bottom:28px;width:250px}
+ .right{display:none}.tip{bottom:67px;font-size:11px;white-space:nowrap}
+}
+</style>
+</head>
+<body>
+<div id="app">
+  <div id="scene"></div>
+  <div class="vignette"></div>
+  <div class="hud">
+    <header class="top">
+      <div class="logo">PUBG</div>
+      <div class="brand">PLAYERUNKNOWN'S<br>BATTLEGROUNDS</div>
+      <nav>
+        <button class="active" data-section="HOME">HOME</button>
+        <button data-section="ABOUT">ABOUT</button>
+        <button data-section="3D SHOWCASE">3D SHOWCASE</button>
+        <button data-section="SHADER DEMO">SHADER DEMO</button>
+        <button data-section="CONTACT">CONTACT</button>
+      </nav>
+    </header>
+
+    <section class="profile">
+      <div class="kicker">3D PORTFOLIO</div>
+      <h1>Saharat<br>Tratangsakul</h1>
+      <div class="meta">
+        <div>Nickname : <b>Boss</b></div>
+        <div>Age : 21 Y</div>
+        <div>My Birthday : 17/02/05</div>
+      </div>
+    </section>
+
+    <section class="panel map">
+      <div class="title">CURRENT MAP</div>
+      <strong>ERANGEL</strong>
+      <div>Squad &nbsp;|&nbsp; TPP &nbsp; <span>? READY</span></div>
+    </section>
+
+    <section class="panel mode">
+      <small>LOBBY / PLAYER 01</small><br>
+      <strong>WAITING FOR MATCH</strong>
+    </section>
+
+    <button class="start" id="start">START MATCH</button>
+
+    <section class="panel right">
+      <h3>3D / RENDER STATUS</h3>
+      <div class="skill"><label><span>PBR MATERIAL</span><span>100%</span></label><div class="bar"><i></i></div></div>
+      <div class="skill"><label><span>GLB MODEL</span><span>READY</span></label><div class="bar"><i style="width:100%"></i></div></div>
+      <div class="skill"><label><span>SHADER FX</span><span>ACTIVE</span></label><div class="bar"><i style="width:82%"></i></div></div>
+    </section>
+
+    <div class="tip">?? DRAG TO ROTATE &nbsp; • &nbsp; WHEEL TO ZOOM</div>
+    <div class="footer">© SAHARAT TRATANGSAKUL &nbsp; / &nbsp; 3D PORTFOLIO &nbsp; / &nbsp; THREE.JS</div>
+    <div class="toast" id="toast"></div>
+  </div>
+  <div class="cursor" id="cursor"></div>
+</div>
+
+<script type="importmap">
+{
+  "imports": {
+    "three": "https://cdn.jsdelivr.net/npm/three@0.180.0/build/three.module.js",
+    "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.180.0/examples/jsm/"
+  }
+}
+</script>
+
+<script type="module">
+import * as THREE from 'three';
+import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
+
+const scene = new THREE.Scene();
+scene.fog = new THREE.FogExp2(0x101417, 0.018);
+
+const camera = new THREE.PerspectiveCamera(42, innerWidth/innerHeight, 0.1, 200);
+camera.position.set(0, 2.2, 7.4);
+
+const renderer = new THREE.WebGLRenderer({antialias:true, alpha:true});
+renderer.setPixelRatio(Math.min(devicePixelRatio,2));
+renderer.setSize(innerWidth,innerHeight);
+renderer.shadowMap.enabled = true;
+renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+renderer.outputColorSpace = THREE.SRGBColorSpace;
+renderer.toneMapping = THREE.ACESFilmicToneMapping;
+renderer.toneMappingExposure = 1.15;
+document.getElementById('scene').appendChild(renderer.domElement);
+
+const controls = new OrbitControls(camera, renderer.domElement);
+controls.enableDamping = true;
+controls.enablePan = false;
+controls.minDistance = 4;
+controls.maxDistance = 11;
+controls.minPolarAngle = Math.PI*.28;
+controls.maxPolarAngle = Math.PI*.66;
+controls.target.set(0,1.45,0);
+
+const hemi = new THREE.HemisphereLight(0x9bb4c8,0x19130d,1.5);
+scene.add(hemi);
+const sun = new THREE.DirectionalLight(0xffe0ad,3.2);
+sun.position.set(-5,9,4); sun.castShadow=true; sun.shadow.mapSize.set(2048,2048);
+scene.add(sun);
+const rim = new THREE.PointLight(0xffa51c,18,18);
+rim.position.set(4,4,-2); scene.add(rim);
+const blue = new THREE.PointLight(0x4f8cff,10,15);
+blue.position.set(-5,2,-4); scene.add(blue);
+
+const world = new THREE.Group();
+scene.add(world);
+
+// Lobby floor
+const floor = new THREE.Mesh(
+  new THREE.CircleGeometry(13,64),
+  new THREE.MeshStandardMaterial({color:0x242625,roughness:.78,metalness:.25})
+);
+floor.rotation.x=-Math.PI/2; floor.receiveShadow=true; world.add(floor);
+
+const platform = new THREE.Mesh(
+  new THREE.CylinderGeometry(2.15,.95,.28,64),
+  new THREE.MeshStandardMaterial({color:0x313335,roughness:.3,metalness:.8})
+);
+platform.position.y=.14; platform.receiveShadow=true; world.add(platform);
+
+const ring = new THREE.Mesh(
+  new THREE.TorusGeometry(1.65,.025,8,96),
+  new THREE.MeshBasicMaterial({color:0xf2b900})
+);
+ring.rotation.x=Math.PI/2; ring.position.y=.3; world.add(ring);
+
+// crates / background lobby silhouettes
+function box(x,y,z,sx,sy,sz,mat=0x252625){
+ const m=new THREE.Mesh(new THREE.BoxGeometry(sx,sy,sz),new THREE.MeshStandardMaterial({color:mat,roughness:.75,metalness:.2}));
+ m.position.set(x,y,z);m.castShadow=true;m.receiveShadow=true;world.add(m);return m;
+}
+for(let i=0;i<13;i++){
+ const x=(Math.random()-.5)*14, z=-3-Math.random()*5;
+ box(x,.45,z,.9+Math.random(),.9,.8+Math.random(), i%3===0?0x34404a:0x2b2c2a);
+}
+for(let i=0;i<6;i++){
+ const pole=new THREE.Mesh(new THREE.CylinderGeometry(.045,.045,5,10),new THREE.MeshStandardMaterial({color:0x343638,metalness:.6,roughness:.5}));
+ pole.position.set(-7+i*2.8,2,-6);world.add(pole);
+}
+
+// Simple procedural fallback character so the page still works without a GLB.
+const fallback = new THREE.Group();
+function mat(c,r=.45,m=.25){return new THREE.MeshStandardMaterial({color:c,roughness:r,metalness:m})}
+const skin=mat(0x9b6a4c,.6,0), shirt=mat(0x4a4b46,.85,.05), dark=mat(0x1b1d1d,.65,.25), gear=mat(0x313432,.7,.35);
+function capsule(r,len,material){
+ return new THREE.Mesh(new THREE.CapsuleGeometry(r,len,8,16),material);
+}
+const torso=capsule(.48,1.25,shirt); torso.position.y=1.75; torso.scale.set(1,1,.62); fallback.add(torso);
+const head=new THREE.Mesh(new THREE.SphereGeometry(.34,24,16),skin);head.position.y=2.75;fallback.add(head);
+const helmet=new THREE.Mesh(new THREE.SphereGeometry(.42,24,16,0,Math.PI*2,0,Math.PI*.62),dark);helmet.position.y=2.82;fallback.add(helmet);
+const visor=new THREE.Mesh(new THREE.BoxGeometry(.48,.09,.12),mat(0x111416,.15,.8));visor.position.set(0,2.78,.35);fallback.add(visor);
+for(const x of [-.27,.27]){
+ const arm=capsule(.14,.7,shirt);arm.position.set(x,1.75,0);arm.rotation.z=x<0?-.18:.18;fallback.add(arm);
+ const hand=capsule(.12,.22,skin);hand.position.set(x*1.13,1.28,0);fallback.add(hand);
+ const leg=capsule(.18,.92,dark);leg.position.set(x*.48,.75,0);fallback.add(leg);
+ const boot=new THREE.Mesh(new THREE.BoxGeometry(.29,.2,.55),gear);boot.position.set(x*.48,.18,.08);fallback.add(boot);
+}
+const vest=new THREE.Mesh(new THREE.BoxGeometry(.9,.85,.48),gear);vest.position.set(0,1.78,.08);fallback.add(vest);
+fallback.position.y=.35;fallback.traverse(o=>{if(o.isMesh){o.castShadow=true;o.receiveShadow=true}});
+world.add(fallback);
+
+let model = null;
+const loader = new GLTFLoader();
+// Put your GLB next to this index.html and name it "character.glb".
+loader.load('character.glb', gltf=>{
+  model=gltf.scene;
+  model.traverse(o=>{
+    if(o.isMesh){
+      o.castShadow=true;o.receiveShadow=true;
+      if(o.material){
+        o.material.metalness = Math.min(1, o.material.metalness ?? .25);
+        o.material.roughness = Math.max(.18, o.material.roughness ?? .55);
+      }
+    }
+  });
+  const box3=new THREE.Box3().setFromObject(model);
+  const size=box3.getSize(new THREE.Vector3());
+  const center=box3.getCenter(new THREE.Vector3());
+  const scale=2.9/Math.max(size.x,size.y,size.z);
+  model.scale.setScalar(scale);
+  model.position.set(-center.x*scale, .32-center.y*scale, -center.z*scale);
+  fallback.visible=false;
+  world.add(model);
+  toast('GLB MODEL LOADED • PBR READY');
+}, undefined, ()=>{
+  toast('DEMO CHARACTER ACTIVE • ADD character.glb TO LOAD YOUR MODEL');
+});
+
+function toast(t){
+ const el=document.getElementById('toast');el.textContent=t;el.classList.add('show');
+ clearTimeout(window.__toast);window.__toast=setTimeout(()=>el.classList.remove('show'),2600);
+}
+
+// Animated shader-like energy ring
+const shaderRing=new THREE.Mesh(
+ new THREE.TorusGeometry(2.55,.012,8,160),
+ new THREE.ShaderMaterial({
+  uniforms:{time:{value:0}},
+  vertexShader:`varying vec2 vUv; void main(){vUv=uv; gl_Position=projectionMatrix*modelViewMatrix*vec4(position,1.0);}`,
+  fragmentShader:`uniform float time; varying vec2 vUv; void main(){float a=.35+.35*sin(vUv.x*40.0-time*5.0); gl_FragColor=vec4(.95,.55,.02,a);}`
+ })
+);
+shaderRing.rotation.x=Math.PI/2;shaderRing.position.y=.31;world.add(shaderRing);
+
+const clock=new THREE.Clock();
+function animate(){
+ requestAnimationFrame(animate);
+ const t=clock.getElapsedTime();
+ shaderRing.material.uniforms.time.value=t;
+ if(model) model.rotation.y += 0.0008;
+ else fallback.rotation.y += 0.0008;
+ controls.update();
+ renderer.render(scene,camera);
+}
+animate();
+
+addEventListener('resize',()=>{
+ camera.aspect=innerWidth/innerHeight;camera.updateProjectionMatrix();renderer.setSize(innerWidth,innerHeight);
+});
+
+// Cursor + muzzle-flash/bullet click effect
+const cursor=document.getElementById('cursor');
+addEventListener('pointermove',e=>{cursor.style.left=e.clientX+'px';cursor.style.top=e.clientY+'px'});
+addEventListener('pointerdown',e=>{
+ const h=document.createElement('div');h.className='hit';h.textContent='?';
+ h.style.left=e.clientX+'px';h.style.top=e.clientY+'px';document.body.appendChild(h);
+ setTimeout(()=>h.remove(),450);
+});
+document.getElementById('start').onclick=()=>toast('MATCHMAKING • PORTFOLIO LOBBY READY');
+document.querySelectorAll('nav button').forEach(b=>b.onclick=()=>{
+ document.querySelectorAll('nav button').forEach(x=>x.classList.remove('active'));b.classList.add('active');
+ toast(b.dataset.section+' • SECTION SELECTED');
+});
+
+// Slight parallax from mouse
+let tx=0,ty=0,px=0,py=0;
+addEventListener('pointermove',e=>{
+ tx=(e.clientX/innerWidth-.5)*.25; ty=(e.clientY/innerHeight-.5)*.12;
+});
+setInterval(()=>{
+ px+=(tx-px)*.04;py+=(ty-py)*.04;
+ world.position.x=px;world.position.y=-py;
+},16);
+</script>
+</body>
+</html>
