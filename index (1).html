@@ -1,0 +1,450 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1.0">
+<title>Saharat Tratangsakul — 3D Portfolio</title>
+
+<script type="importmap">
+{
+  "imports": {
+    "three": "https://cdn.jsdelivr.net/npm/three@0.186.0/build/three.module.js",
+    "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.186.0/examples/jsm/"
+  }
+}
+</script>
+
+<style>
+:root{
+  --bg:#07080c;--panel:#0d1118;--panel2:#111722;--line:#27303b;
+  --text:#f4f6f8;--muted:#929aa7;--red:#ff4655;--cyan:#5bdcff;
+  --purple:#9c66ff;--green:#55f0ac;
+}
+*{box-sizing:border-box}html{scroll-behavior:smooth}
+body{margin:0;color:var(--text);font-family:Inter,system-ui,-apple-system,Segoe UI,sans-serif;
+background:
+radial-gradient(circle at 75% 5%,rgba(255,70,85,.13),transparent 26%),
+radial-gradient(circle at 15% 35%,rgba(91,220,255,.07),transparent 27%),
+linear-gradient(#07080c,#05060a 80%);overflow-x:hidden}
+body:before{content:"";position:fixed;inset:0;pointer-events:none;opacity:.14;
+background-image:linear-gradient(rgba(255,255,255,.035) 1px,transparent 1px),
+linear-gradient(90deg,rgba(255,255,255,.035) 1px,transparent 1px);
+background-size:40px 40px;mask-image:linear-gradient(#000,transparent 78%);z-index:-1}
+a{text-decoration:none;color:inherit}button{font:inherit}
+
+.navbar{position:fixed;z-index:50;top:16px;left:50%;transform:translateX(-50%);
+width:min(1180px,calc(100% - 26px));display:flex;justify-content:space-between;align-items:center;
+padding:10px 13px;border:1px solid rgba(255,255,255,.12);border-radius:16px;
+background:rgba(5,7,11,.75);backdrop-filter:blur(15px)}
+.brand{font-size:12px;font-weight:800;letter-spacing:.15em;text-transform:uppercase;display:flex;gap:9px;align-items:center}
+.dot{width:9px;height:9px;background:var(--red);border-radius:50%;box-shadow:0 0 17px var(--red)}
+.links{display:flex;gap:4px}.links a{font-size:11px;color:#9ca5b1;padding:8px 10px;border-radius:9px}.links a:hover{background:#fff1;color:white}
+
+.wrap{width:min(1180px,calc(100% - 26px));margin:auto}
+.hero{min-height:100vh;padding:130px 0 70px;display:grid;grid-template-columns:.9fr 1.1fr;gap:44px;align-items:center}
+.eyebrow{font-size:11px;letter-spacing:.2em;text-transform:uppercase;color:var(--red);font-weight:800;margin-bottom:18px}
+h1{font-size:clamp(60px,8.6vw,112px);line-height:.86;letter-spacing:-.06em;margin:0;text-transform:uppercase}
+h1 span{display:block;color:transparent;-webkit-text-stroke:1px #ffffff36}
+.hero p{color:var(--muted);max-width:550px;line-height:1.8;font-size:14px;margin:26px 0}
+.badges{display:flex;flex-wrap:wrap;gap:8px}.badge{border:1px solid var(--line);border-radius:99px;padding:9px 12px;font-size:11px;color:#cbd2dc;background:#ffffff07}
+.badge b{color:white}
+
+.hero3d{height:590px;position:relative;border:1px solid var(--line);border-radius:28px;overflow:hidden;
+background:radial-gradient(circle at 50% 35%,#201318,transparent 31%),#080b11;box-shadow:0 25px 80px #0009}
+#heroCanvas{position:absolute;inset:0;width:100%;height:100%}.hero-label{position:absolute;left:17px;bottom:17px;
+padding:13px 15px;border:1px solid #ffffff15;background:#030509a8;backdrop-filter:blur(10px);border-radius:13px}
+.hero-label small{display:block;color:#8d96a3;letter-spacing:.18em;font-size:9px;text-transform:uppercase}
+.hero-label strong{display:block;margin-top:5px;font-size:19px}
+.corner{position:absolute;width:36px;height:36px;pointer-events:none}.tl{top:13px;left:13px;border-top:1px solid #ff465588;border-left:1px solid #ff465588}
+.br{bottom:13px;right:13px;border-bottom:1px solid #ff465588;border-right:1px solid #ff465588}
+
+section{padding:88px 0}.head{display:flex;justify-content:space-between;gap:25px;align-items:end;margin-bottom:24px}
+.head h2{margin:0;font-size:clamp(31px,4.7vw,54px);letter-spacing:-.04em;line-height:1}
+.head p{margin:0;max-width:480px;color:var(--muted);font-size:12px;line-height:1.75}
+
+.viewer{height:670px;position:relative;overflow:hidden;border:1px solid var(--line);border-radius:27px;
+background:radial-gradient(circle at 50% 43%,#2b151c,transparent 31%),#070a0f;box-shadow:0 25px 80px #0009}
+#viewerCanvas{position:absolute;inset:0;width:100%;height:100%}
+.toolbar{position:absolute;z-index:5;left:17px;top:17px;right:17px;display:flex;justify-content:space-between;gap:10px;pointer-events:none}
+.toolbar>*{pointer-events:auto}.tabs,.actions{display:flex;gap:6px;flex-wrap:wrap}
+.btn{border:1px solid #ffffff18;background:#030609b8;color:#aab3c0;padding:9px 11px;border-radius:10px;
+font-size:10px;cursor:pointer;backdrop-filter:blur(10px)}.btn:hover,.btn.active{color:#fff;border-color:#ff465577;background:#ff465514}
+.load{position:absolute;left:17px;top:68px;z-index:5;padding:9px;border:1px dashed #ffffff17;border-radius:12px;background:#03060999;backdrop-filter:blur(10px);display:flex;align-items:center;gap:9px}
+.file-btn{font-size:10px;padding:8px 10px;border:1px solid #fff2;background:#fff1;border-radius:9px;cursor:pointer;color:#dfe5ed}
+.file-btn input{display:none}.load span{color:#77818e;font-size:10px}
+.info{position:absolute;z-index:5;right:17px;bottom:17px;width:315px;padding:14px;border:1px solid #ffffff14;border-radius:14px;background:#030609bf;backdrop-filter:blur(12px)}
+.info .tag{font-size:9px;color:var(--red);letter-spacing:.2em;text-transform:uppercase;font-weight:800}
+.info h3{margin:5px 0;font-size:18px}.info p{color:#8f98a4;font-size:11px;line-height:1.6;margin:0}
+.hint{position:absolute;left:17px;bottom:18px;color:#7e8794;font-size:10px;z-index:5}
+
+.two{display:grid;grid-template-columns:1.04fr .96fr;gap:18px}
+.card{min-height:420px;border:1px solid var(--line);border-radius:23px;overflow:hidden;background:#0b0f16;position:relative}
+.card-title{position:absolute;z-index:3;left:18px;right:18px;top:16px;display:flex;justify-content:space-between;align-items:center}
+.card-title strong{font-size:12px;letter-spacing:.11em;text-transform:uppercase}.card-title a{font-size:10px;color:#aab2be;border:1px solid #fff2;padding:7px 9px;border-radius:8px}
+#pbrCanvas{position:absolute;inset:0}
+.pbr-note{position:absolute;z-index:3;left:18px;right:18px;bottom:18px;padding:13px;border:1px solid #ffffff13;border-radius:13px;background:#030609bc;backdrop-filter:blur(12px)}
+.pbr-note h3{margin:0 0 5px;font-size:18px}.pbr-note p{margin:0;color:#919aa6;font-size:11px;line-height:1.65}
+
+.shader-card{padding:18px;display:flex;flex-direction:column;background:linear-gradient(135deg,#141022,#0b0f16)}
+#shaderCanvas{width:100%;height:245px;border-radius:16px;border:1px solid #ffffff12;background:#070910;display:block}
+.shader-card h3{margin:17px 0 5px;font-size:18px}.shader-card>p{margin:0;color:#8f98a4;font-size:11px;line-height:1.65}
+.code{margin-top:14px;border:1px solid #ffffff0f;background:#05070b;border-radius:12px;padding:12px;color:#bcefff;font:10px/1.65 ui-monospace,Consolas,monospace;white-space:pre-wrap}
+
+.works{display:grid;grid-template-columns:repeat(3,1fr);gap:12px}.work{min-height:190px;border:1px solid var(--line);border-radius:19px;padding:18px;background:#ffffff03}
+.work span{font:10px ui-monospace,monospace;color:var(--red)}.work h3{margin:42px 0 8px;font-size:20px}.work p{margin:0;color:#8b95a2;font-size:11px;line-height:1.7}
+
+.source{margin-top:13px;color:#68727e;font-size:10px;line-height:1.6}
+footer{border-top:1px solid #ffffff10;margin-top:20px;padding:38px 0 64px;color:#707985;font-size:10px;display:flex;justify-content:space-between}
+
+.status{position:fixed;z-index:60;left:50%;bottom:18px;transform:translate(-50%,130px);transition:.28s;
+padding:10px 13px;border:1px solid #ffffff18;border-radius:10px;background:#030509eF;backdrop-filter:blur(11px);font-size:11px}
+.status.show{transform:translate(-50%,0)}
+
+@media(max-width:920px){.hero{grid-template-columns:1fr}.hero3d{height:510px}.two{grid-template-columns:1fr}.works{grid-template-columns:1fr}}
+@media(max-width:650px){.links a:nth-child(2){display:none}.viewer{height:560px}.info{left:12px;right:12px;width:auto}.load{left:12px;right:12px;top:71px}.toolbar{left:12px;right:12px}.hint{left:12px}.hero3d{height:470px}}
+</style>
+</head>
+
+<body>
+<header class="navbar">
+  <a class="brand" href="#top"><span class="dot"></span>BOSS / 3D PORTFOLIO</a>
+  <nav class="links">
+    <a href="#top">Profile</a><a href="#raze">RAZE</a><a href="#shader">Shader</a><a href="#works">Works</a>
+  </nav>
+</header>
+
+<main id="top">
+  <div class="wrap">
+    <section class="hero">
+      <div>
+        <div class="eyebrow">Creative Portfolio // 3D Artist</div>
+        <h1>BOSS <span>3D</span></h1>
+        <p>
+          <b style="color:#fff">Saharat Tratangsakul</b> — a 3D portfolio focused on
+          modeling, PBR materials, real-time presentation and shader fundamentals.
+        </p>
+        <div class="badges">
+          <div class="badge">Nickname <b>Boss</b></div>
+          <div class="badge">Age <b>21 Y</b></div>
+          <div class="badge">Birthday <b>17/02/05</b></div>
+          <div class="badge">Three.js <b>WebGL</b></div>
+        </div>
+      </div>
+      <div class="hero3d">
+        <canvas id="heroCanvas"></canvas>
+        <span class="corner tl"></span><span class="corner br"></span>
+        <div class="hero-label"><small>Portfolio identity</small><strong>REAL-TIME 3D ARTIST</strong></div>
+      </div>
+    </section>
+
+    <section id="raze">
+      <div class="head">
+        <div><div class="eyebrow">01 / RAZE MODEL LAB</div><h2>RAZE · 3D SHOWCASE</h2></div>
+        <p>
+          Interactive Three.js material stage. The page also includes a public Raze model
+          reference from Sketchfab. Use the OBJ/FBX controls below to load your exact Raze asset
+          locally into this same Three.js viewer.
+        </p>
+      </div>
+
+      <div class="viewer">
+        <canvas id="viewerCanvas"></canvas>
+
+        <div class="toolbar">
+          <div class="tabs">
+            <button class="btn active" data-mode="pbr">PBR DEMO</button>
+            <button class="btn" data-mode="public">PUBLIC RAZE</button>
+            <button class="btn" data-mode="uploaded">UPLOADED MODEL</button>
+          </div>
+          <div class="actions">
+            <button class="btn" id="reset">RESET</button>
+            <button class="btn" id="grid">GRID</button>
+            <button class="btn" id="auto">AUTO ROTATE</button>
+          </div>
+        </div>
+
+        <div class="load">
+          <label class="file-btn">LOAD RAZE .OBJ<input id="obj" type="file" accept=".obj"></label>
+          <label class="file-btn">LOAD RAZE .FBX<input id="fbx" type="file" accept=".fbx"></label>
+          <span>Local model → Three.js → PBR presentation</span>
+        </div>
+
+        <div class="hint">Drag = rotate · wheel = zoom · right-drag = pan</div>
+
+        <div class="info">
+          <div class="tag" id="tag">PBR MATERIAL STUDY</div>
+          <h3 id="title">Valorant-inspired Raze presentation</h3>
+          <p id="desc">
+            Metallic + roughness + clearcoat style lighting designed to make a character asset read clearly.
+          </p>
+          <div class="source">
+            Public Raze reference:
+            <a id="sourceLink" href="https://sketchfab.com/3d-models/raze-valorant-4d005decbf2b47178123123401a25774"
+               target="_blank" rel="noreferrer" style="color:#cbd5e1">Sketchfab / Raze | Valorant</a>
+          </div>
+        </div>
+      </div>
+
+      <div class="source">
+        Note: the public Raze page is used as a reference/viewer because a direct cross-origin FBX/OBJ file URL
+        suitable for browser loading was not publicly exposed. The local file controls are included for your own
+        licensed/downloaded Raze asset. The cited Sketchfab page identifies the model as free for educational/personal
+        use under its stated creator policy. 
+      </div>
+
+      <!-- Public Raze viewer -->
+      <div style="margin-top:18px;border:1px solid #27303b;border-radius:22px;overflow:hidden;background:#090c12">
+        <div style="padding:13px 16px;border-bottom:1px solid #ffffff0d;display:flex;justify-content:space-between;align-items:center">
+          <strong style="font-size:12px;letter-spacing:.1em;text-transform:uppercase">Public Raze Viewer</strong>
+          <a class="btn" href="https://sketchfab.com/3d-models/raze-valorant-4d005decbf2b47178123123401a25774"
+             target="_blank" rel="noreferrer">OPEN SOURCE PAGE</a>
+        </div>
+        <iframe
+          title="Public Raze 3D Model"
+          src="https://sketchfab.com/models/4d005decbf2b47178123123401a25774/embed?autostart=1&ui_theme=dark"
+          style="width:100%;height:620px;border:0;display:block"
+          allow="autoplay; fullscreen; xr-spatial-tracking"
+          allowfullscreen>
+        </iframe>
+      </div>
+    </section>
+
+    <section id="shader">
+      <div class="head">
+        <div><div class="eyebrow">02 / SHADER BASICS</div><h2>SHADER STUDY</h2></div>
+        <p>A beginner GLSL example using UV coordinates, time, scanlines, a pulse and a radial glow.</p>
+      </div>
+
+      <div class="two">
+        <div class="card">
+          <div class="card-title"><strong>PBR MATERIAL</strong><span class="badge">Metalness / Roughness</span></div>
+          <canvas id="pbrCanvas"></canvas>
+          <div class="pbr-note">
+            <h3>Character Surface Readability</h3>
+            <p>
+              Physical-style lighting with environment reflections, metallic response and roughness variation.
+              Swap this procedural object for your own textured character to present Substance Painter work.
+            </p>
+          </div>
+        </div>
+
+        <div class="card shader-card">
+          <canvas id="shaderCanvas"></canvas>
+          <h3>Animated Fragment Shader</h3>
+          <p>Simple effect suitable for hologram panels, HUDs, portfolio transitions or material accents.</p>
+          <div class="code">float pulse = 0.5 + 0.5 * sin(uTime * 2.0);
+float scan  = 0.5 + 0.5 * sin(vUv.y * 90.0 + uTime * 5.0);
+
+vec3 c = mix(baseColor, accentColor, pulse * scan);
+c += glowColor * smoothstep(0.6, 0.0, length(vUv - 0.5));
+
+gl_FragColor = vec4(c, 1.0);</div>
+        </div>
+      </div>
+    </section>
+
+    <section id="works">
+      <div class="head">
+        <div><div class="eyebrow">03 / SELECTED WORK</div><h2>WORKS</h2></div>
+        <p>Replace these cards with your actual renders, project breakdowns and production screenshots.</p>
+      </div>
+      <div class="works">
+        <article class="work"><span>01 / ENVIRONMENT</span><h3>The Empty</h3><p>Psychological horror environment — modeling, texturing and atmospheric real-time composition.</p></article>
+        <article class="work"><span>02 / REAL-TIME</span><h3>Boss Fight Scene</h3><p>Unity scene work focused on terrain, lighting, interaction and animation presentation.</p></article>
+        <article class="work"><span>03 / VR</span><h3>Football Through Time</h3><p>Educational VR experience with 3D asset production and interactive presentation.</p></article>
+      </div>
+    </section>
+
+    <footer><span>SAHARAT TRATANGSAKUL / BOSS</span><span>THREE.JS · PBR · GLSL · VALORANT INSPIRED</span></footer>
+  </div>
+</main>
+
+<div class="status" id="status"></div>
+
+<script type="module">
+import * as THREE from 'three';
+import {OrbitControls} from 'three/addons/controls/OrbitControls.js';
+import {OBJLoader} from 'three/addons/loaders/OBJLoader.js';
+import {FBXLoader} from 'three/addons/loaders/FBXLoader.js';
+import {RoomEnvironment} from 'three/addons/environments/RoomEnvironment.js';
+
+const $ = id => document.getElementById(id);
+const status = $('status');
+function toast(t){status.textContent=t;status.classList.add('show');clearTimeout(toast.t);toast.t=setTimeout(()=>status.classList.remove('show'),2500)}
+
+function renderer(canvas, alpha=false){
+  const r = new THREE.WebGLRenderer({canvas,antialias:true,alpha,powerPreference:'high-performance'});
+  r.setPixelRatio(Math.min(devicePixelRatio,2));
+  r.outputColorSpace=THREE.SRGBColorSpace;
+  r.toneMapping=THREE.ACESFilmicToneMapping;
+  r.toneMappingExposure=1.08;
+  r.shadowMap.enabled=true;
+  r.shadowMap.type=THREE.PCFSoftShadowMap;
+  return r;
+}
+function env(scene,r){
+  const pmrem=new THREE.PMREMGenerator(r);
+  scene.environment=pmrem.fromScene(new RoomEnvironment(),.05).texture;
+  pmrem.dispose();
+  const key=new THREE.DirectionalLight(0xffffff,4.3);key.position.set(4,7,6);key.castShadow=true;scene.add(key);
+  const red=new THREE.PointLight(0xff4655,12,15,2);red.position.set(-4,2,-3);scene.add(red);
+  const cyan=new THREE.PointLight(0x5bdcff,9,15,2);cyan.position.set(4,1,2);scene.add(cyan);
+}
+function fit(root,camera,controls,scaleMul=1.5){
+  root.updateMatrixWorld(true);
+  const box=new THREE.Box3().setFromObject(root),size=box.getSize(new THREE.Vector3()),center=box.getCenter(new THREE.Vector3());
+  const max=Math.max(size.x,size.y,size.z)||1;root.scale.setScalar(3.5/max);
+  root.position.sub(center.multiplyScalar(3.5/max));root.updateMatrixWorld(true);
+  const b=new THREE.Box3().setFromObject(root),s=b.getSize(new THREE.Vector3()),d=s.length()*scaleMul;
+  camera.position.set(d*.7,d*.48,d);controls.target.set(0,0,0);controls.update();
+}
+function pbrize(root,color=0xa8b5c7){
+  root.traverse(o=>{
+    if(!o.isMesh)return;
+    o.castShadow=o.receiveShadow=true;
+    const old=Array.isArray(o.material)?o.material:[o.material];
+    const mats=old.map(m=>new THREE.MeshStandardMaterial({
+      color,
+      map:m?.map||null,
+      normalMap:m?.normalMap||null,
+      roughness:m?.roughness??.28,
+      metalness:m?.metalness??.72,
+      envMapIntensity:1.65,
+      side:m?.side??THREE.FrontSide
+    }));
+    o.material=Array.isArray(o.material)?mats:mats[0];
+  });
+}
+
+// ---------- HERO ----------
+const heroCanvas=$('heroCanvas'),heroR=renderer(heroCanvas),heroS=new THREE.Scene();
+heroS.background=new THREE.Color(0x090c12);
+const heroC=new THREE.PerspectiveCamera(31,1,.1,100);heroC.position.set(0,1,7);
+env(heroS,heroR);
+const heroG=new THREE.Group();heroS.add(heroG);
+const dark=new THREE.MeshPhysicalMaterial({color:0x26313e,metalness:.9,roughness:.2,clearcoat:.8,clearcoatRoughness:.12,envMapIntensity:1.8});
+const redMat=new THREE.MeshPhysicalMaterial({color:0xff4655,metalness:.55,roughness:.21,clearcoat:1,clearcoatRoughness:.1,emissive:0x260005,emissiveIntensity:1.3});
+const orb=new THREE.Mesh(new THREE.IcosahedronGeometry(1.17,3),dark);orb.castShadow=true;heroG.add(orb);
+const hr1=new THREE.Mesh(new THREE.TorusGeometry(1.65,.055,16,160),redMat);hr1.rotation.x=.55;heroG.add(hr1);
+const hr2=new THREE.Mesh(new THREE.TorusGeometry(1.35,.035,16,160),dark);hr2.rotation.y=1.1;heroG.add(hr2);
+for(let i=0;i<14;i++){const m=new THREE.Mesh(new THREE.BoxGeometry(.08,.52,.08),redMat),a=i/14*Math.PI*2;m.position.set(Math.cos(a)*2.2,Math.sin(a*1.7)*.35,Math.sin(a)*2.2);m.lookAt(0,0,0);heroG.add(m)}
+const heroOC=new OrbitControls(heroC,heroCanvas);heroOC.enableDamping=true;heroOC.enablePan=false;heroOC.autoRotate=true;heroOC.autoRotateSpeed=.65;
+
+// ---------- MAIN VIEWER ----------
+const vCanvas=$('viewerCanvas'),vR=renderer(vCanvas),vS=new THREE.Scene();vS.background=new THREE.Color(0x070a0f);
+const vC=new THREE.PerspectiveCamera(42,1,.01,100);vC.position.set(4.6,2.9,6.6);env(vS,vR);
+const oc=new OrbitControls(vC,vCanvas);oc.enableDamping=true;oc.dampingFactor=.07;oc.minDistance=1.5;oc.maxDistance=14;
+const vg=new THREE.Group();vS.add(vg);
+const floor=new THREE.Mesh(new THREE.PlaneGeometry(18,18),new THREE.MeshStandardMaterial({color:0x080b10,roughness:.76,metalness:.2}));
+floor.rotation.x=-Math.PI/2;floor.position.y=-1.52;floor.receiveShadow=true;vS.add(floor);
+const grid=new THREE.GridHelper(16,16,0x4a535d,0x1e252d);grid.position.y=-1.51;grid.material.opacity=.28;grid.material.transparent=true;vS.add(grid);
+let current=null;
+function clear(){if(!current)return;vg.remove(current);current.traverse(o=>{if(o.isMesh){o.geometry?.dispose?.();(Array.isArray(o.material)?o.material:[o.material]).forEach(m=>m?.dispose?.())}});current=null}
+function demoRazePBR(){
+  const g=new THREE.Group();
+  // A stylized portfolio stand-in for the public Raze character asset.
+  // The actual Raze asset can be loaded using the OBJ/FBX file controls.
+  const skin=new THREE.MeshPhysicalMaterial({color:0x9b5938,roughness:.45,metalness:.02,envMapIntensity:1.35});
+  const jacket=new THREE.MeshPhysicalMaterial({color:0x242b35,roughness:.3,metalness:.62,clearcoat:.6,clearcoatRoughness:.16,envMapIntensity:1.8});
+  const accent=new THREE.MeshPhysicalMaterial({color:0xff4655,roughness:.2,metalness:.5,clearcoat:1,emissive:0x260005,emissiveIntensity:1.5});
+  const pants=new THREE.MeshPhysicalMaterial({color:0x14171d,roughness:.38,metalness:.52,envMapIntensity:1.6});
+
+  const head=new THREE.Mesh(new THREE.SphereGeometry(.55,48,32),skin);head.position.y=1.75;head.scale.set(.86,1.05,.86);g.add(head);
+  const torso=new THREE.Mesh(new THREE.CapsuleGeometry(.66,.9,8,24),jacket);torso.position.y=.68;torso.castShadow=true;g.add(torso);
+  const belt=new THREE.Mesh(new THREE.TorusGeometry(.62,.09,12,64),accent);belt.rotation.x=Math.PI/2;belt.position.y=.37;g.add(belt);
+  const lArm=new THREE.Mesh(new THREE.CapsuleGeometry(.15,.65,6,20),accent);lArm.position.set(-.73,.75,0);lArm.rotation.z=-.35;g.add(lArm);
+  const rArm=lArm.clone();rArm.position.x=.73;rArm.rotation.z=.35;g.add(rArm);
+  const lLeg=new THREE.Mesh(new THREE.CapsuleGeometry(.22,.9,6,20),pants);lLeg.position.set(-.29,-.55,0);g.add(lLeg);
+  const rLeg=lLeg.clone();rLeg.position.x=.29;g.add(rLeg);
+
+  const hairMat=new THREE.MeshPhysicalMaterial({color:0x4a2117,roughness:.34,metalness:.18,envMapIntensity:1.7});
+  for(let i=0;i<8;i++){const h=new THREE.Mesh(new THREE.ConeGeometry(.13,.48,5),hairMat);const a=(i/8)*Math.PI*2;h.position.set(Math.cos(a)*.46,2.17,Math.sin(a)*.46);h.rotation.x=Math.sin(a)*.45;h.rotation.z=-Math.cos(a)*.45;g.add(h)}
+  const ring=new THREE.Mesh(new THREE.TorusGeometry(1.45,.04,12,140),new THREE.MeshStandardMaterial({color:0xff4655,emissive:0x300008,emissiveIntensity:4,metalness:.4,roughness:.15}));ring.rotation.x=.4;g.add(ring);
+  return g;
+}
+function showDemo(){
+  clear();current=demoRazePBR();vg.add(current);fit(current,vC,oc,1.45);
+  $('tag').textContent='PBR MATERIAL STUDY';$('title').textContent='Raze presentation / PBR stage';
+  $('desc').textContent='Stylized portfolio stand-in with physical-style skin, jacket, accent and metallic materials. Use LOAD RAZE .OBJ/.FBX for the exact asset.';
+}
+showDemo();
+
+async function loadObj(file){
+  try{
+    const text=await file.text(),root=new OBJLoader().parse(text);pbrize(root,0xb1bfce);clear();current=root;vg.add(root);fit(root,vC,oc,1.5);
+    $('tag').textContent='OBJ LOADED';$('title').textContent=file.name;$('desc').textContent='Your OBJ is rendered inside Three.js with a PBR presentation pass.';
+    toast('OBJ loaded');
+  }catch(e){console.error(e);toast('OBJ failed to load')}
+}
+async function loadFbx(file){
+  try{
+    const buffer=await file.arrayBuffer(),root=new FBXLoader().parse(buffer,'');pbrize(root,0xb1bfce);clear();current=root;vg.add(root);fit(root,vC,oc,1.5);
+    $('tag').textContent='FBX LOADED';$('title').textContent=file.name;$('desc').textContent='Your FBX is rendered inside Three.js with a PBR presentation pass.';
+    toast('FBX loaded');
+  }catch(e){console.error(e);toast('FBX failed to load')}
+}
+$('obj').onchange=e=>{if(e.target.files[0])loadObj(e.target.files[0])};
+$('fbx').onchange=e=>{if(e.target.files[0])loadFbx(e.target.files[0])};
+$('reset').onclick=()=>{vC.position.set(4.6,2.9,6.6);oc.target.set(0,0,0);oc.update()};
+$('grid').onclick=()=>{grid.visible=!grid.visible};
+$('auto').onclick=()=>{oc.autoRotate=!oc.autoRotate};
+
+document.querySelectorAll('[data-mode]').forEach(b=>b.onclick=()=>{
+  document.querySelectorAll('[data-mode]').forEach(x=>x.classList.remove('active'));b.classList.add('active');
+  if(b.dataset.mode==='pbr')showDemo();
+  if(b.dataset.mode==='public'){toast('Use the public Raze viewer below');location.hash='raze'}
+  if(b.dataset.mode==='uploaded'){toast('Choose your Raze OBJ or FBX file')}
+});
+
+// ---------- PBR PREVIEW ----------
+const pCanvas=$('pbrCanvas'),pR=renderer(pCanvas),pS=new THREE.Scene();pS.background=new THREE.Color(0x070a10);
+const pC=new THREE.PerspectiveCamera(35,1,.1,100);pC.position.set(0,1,5.7);env(pS,pR);
+const pO=new OrbitControls(pC,pCanvas);pO.enableDamping=true;pO.autoRotate=true;pO.autoRotateSpeed=1.05;pO.enablePan=false;
+const pg=new THREE.Group();pS.add(pg);
+const pMat=new THREE.MeshPhysicalMaterial({color:0x66768a,metalness:.93,roughness:.15,clearcoat:.95,clearcoatRoughness:.09,envMapIntensity:2.25});
+const pSphere=new THREE.Mesh(new THREE.SphereGeometry(1.18,80,60),pMat);pSphere.castShadow=true;pg.add(pSphere);
+const pBand=new THREE.Mesh(new THREE.TorusGeometry(1.45,.065,16,128),new THREE.MeshPhysicalMaterial({color:0xff4655,metalness:.5,roughness:.18,clearcoat:1,emissive:0x260005,emissiveIntensity:1}));pBand.rotation.x=.5;pg.add(pBand);
+
+// ---------- SHADER ----------
+const sCanvas=$('shaderCanvas'),sR=new THREE.WebGLRenderer({canvas:sCanvas,antialias:true,alpha:false});
+sR.setPixelRatio(Math.min(devicePixelRatio,2));const sScene=new THREE.Scene(),sCam=new THREE.OrthographicCamera(-1,1,1,-1,0,1);
+const su={uTime:{value:0},uRes:{value:new THREE.Vector2(1,1)}};
+const sm=new THREE.ShaderMaterial({uniforms:su,vertexShader:`
+varying vec2 vUv;void main(){vUv=uv;gl_Position=vec4(position,1.0);}
+`,fragmentShader:`
+precision highp float;uniform float uTime;uniform vec2 uRes;varying vec2 vUv;
+void main(){
+  vec2 p=vUv-.5;p.x*=uRes.x/max(uRes.y,1.);
+  float pulse=.5+.5*sin(uTime*1.9);
+  float scan=.5+.5*sin(vUv.y*96.0+uTime*5.0);
+  float ring=smoothstep(.48,0.0,abs(length(p)-(.19+.2*pulse)));
+  vec3 base=vec3(.018,.035,.065),red=vec3(1.,.07,.13),cyan=vec3(.18,.76,1.);
+  vec3 c=base+red*ring*(.35+.75*pulse)+cyan*scan*.055;
+  c+=cyan*smoothstep(.57,0.05,length(p))*.04;
+  c*=smoothstep(.82,.12,length(p));
+  gl_FragColor=vec4(c,1.);
+}
+`});sScene.add(new THREE.Mesh(new THREE.PlaneGeometry(2,2),sm));
+
+function resize(){
+  for(const [r,c] of [[heroR,heroCanvas],[vR,vCanvas],[pR,pCanvas]]){
+    const w=c.clientWidth||c.parentElement.clientWidth||1,h=c.clientHeight||c.parentElement.clientHeight||1;r.setSize(w,h,false);
+    const cam=r===heroR?heroC:r===vR?vC:pC;cam.aspect=w/h;cam.updateProjectionMatrix();
+  }
+  const sw=sCanvas.clientWidth||1,sh=sCanvas.clientHeight||1;sR.setSize(sw,sh,false);su.uRes.value.set(sw,sh);
+}
+addEventListener('resize',resize);resize();
+
+const clock=new THREE.Clock();
+function loop(){
+ requestAnimationFrame(loop);const t=clock.getElapsedTime();
+ heroOC.update();orb.rotation.y+=.0025;hr1.rotation.z+=.004;hr2.rotation.x+=.005;
+ oc.update();if(current&&oc.autoRotate)vg.rotation.y+=.0013;
+ pO.update();pg.rotation.y+=.0012;
+ su.uTime.value=t;sR.render(sScene,sCam);
+ heroR.render(heroS,heroC);vR.render(vS,vC);pR.render(pS,pC);
+}
+loop();
+</script>
+</body>
+</html>
