@@ -1,0 +1,370 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+<title>Face Filter</title>
+
+<style>
+* {
+    box-sizing: border-box;
+}
+
+body {
+    margin: 0;
+    background: #080808;
+    color: white;
+    font-family: Arial, sans-serif;
+    overflow: hidden;
+}
+
+#camera {
+    position: fixed;
+    width: 100vw;
+    height: 100vh;
+    object-fit: cover;
+    transform: scaleX(-1);
+}
+
+#overlay {
+    position: fixed;
+    inset: 0;
+    width: 100vw;
+    height: 100vh;
+    pointer-events: none;
+}
+
+#start {
+    position: fixed;
+    left: 50%;
+    bottom: 40px;
+    transform: translateX(-50%);
+
+    padding: 15px 30px;
+    border: none;
+    border-radius: 30px;
+
+    background: white;
+    color: black;
+
+    font-size: 18px;
+    font-weight: bold;
+    cursor: pointer;
+}
+
+#status {
+    position: fixed;
+    top: 20px;
+    left: 50%;
+    transform: translateX(-50%);
+
+    background: rgba(0,0,0,.6);
+    padding: 10px 20px;
+    border-radius: 20px;
+
+    font-size: 14px;
+}
+</style>
+</head>
+
+<body>
+
+<video id="camera" autoplay playsinline></video>
+
+<canvas id="overlay"></canvas>
+
+<div id="status">
+    กด START เพื่อเปิดกล้อง
+</div>
+
+<button id="start">
+    START CAMERA
+</button>
+
+<script type="module">
+
+import {
+    FaceLandmarker,
+    FilesetResolver
+}
+from "https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@latest";
+
+const video = document.getElementById("camera");
+const canvas = document.getElementById("overlay");
+const ctx = canvas.getContext("2d");
+
+const startButton = document.getElementById("start");
+const status = document.getElementById("status");
+
+let faceLandmarker;
+let running = false;
+
+
+// ==========================
+// โหลด Face Tracking
+// ==========================
+
+async function setupFaceTracking() {
+
+    status.innerText = "กำลังโหลด Face Tracking...";
+
+    const vision = await FilesetResolver.forVisionTasks(
+        "https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@latest/wasm"
+    );
+
+    faceLandmarker = await FaceLandmarker.createFromOptions(
+        vision,
+        {
+            baseOptions: {
+                modelAssetPath:
+                "https://storage.googleapis.com/mediapipe-models/face_landmarker/face_landmarker/float16/1/face_landmarker.task"
+            },
+
+            runningMode: "VIDEO",
+
+            numFaces: 1,
+
+            minFaceDetectionConfidence: 0.5,
+            minFacePresenceConfidence: 0.5,
+            minTrackingConfidence: 0.5
+        }
+    );
+
+    status.innerText = "พร้อมแล้ว";
+}
+
+
+// ==========================
+// เปิดกล้อง
+// ==========================
+
+async function startCamera() {
+
+    const stream = await navigator.mediaDevices.getUserMedia({
+        video: {
+            facingMode: "user",
+            width: 1280,
+            height: 720
+        },
+
+        audio: false
+    });
+
+    video.srcObject = stream;
+
+    await video.play();
+
+    canvas.width = video.videoWidth;
+    canvas.height = video.videoHeight;
+
+    running = true;
+
+    startButton.style.display = "none";
+
+    status.innerText = "กำลังตรวจจับใบหน้า...";
+
+    detectFace();
+}
+
+
+// ==========================
+// Face Tracking
+// ==========================
+
+let lastVideoTime = -1;
+
+async function detectFace() {
+
+    if (!running) return;
+
+    if (video.currentTime !== lastVideoTime) {
+
+        lastVideoTime = video.currentTime;
+
+        const results =
+            faceLandmarker.detectForVideo(
+                video,
+                performance.now()
+            );
+
+        drawFilter(results);
+    }
+
+    requestAnimationFrame(detectFace);
+}
+
+
+// ==========================
+// วาดแว่น + หมวก
+// ==========================
+
+function drawFilter(results) {
+
+    ctx.clearRect(
+        0,
+        0,
+        canvas.width,
+        canvas.height
+    );
+
+    if (!results.faceLandmarks ||
+        results.faceLandmarks.length === 0) {
+
+        return;
+    }
+
+    const face = results.faceLandmarks[0];
+
+
+    // จุดตาซ้าย
+    const leftEye = face[33];
+
+    // จุดตาขวา
+    const rightEye = face[263];
+
+    // จุดหน้าผาก
+    const forehead = face[10];
+
+
+    // --------------------------
+    // ตำแหน่งตา
+    // --------------------------
+
+    const x1 = leftEye.x * canvas.width;
+    const y1 = leftEye.y * canvas.height;
+
+    const x2 = rightEye.x * canvas.width;
+    const y2 = rightEye.y * canvas.height;
+
+
+    const centerX = (x1 + x2) / 2;
+    const centerY = (y1 + y2) / 2;
+
+
+    // --------------------------
+    // ขนาดแว่น
+    // --------------------------
+
+    const eyeDistance =
+        Math.sqrt(
+            Math.pow(x2 - x1, 2) +
+            Math.pow(y2 - y1, 2)
+        );
+
+
+    const glassesWidth =
+        eyeDistance * 2.5;
+
+    const glassesHeight =
+        glassesWidth * 0.45;
+
+
+    // --------------------------
+    // หมุนตามหน้า
+    // --------------------------
+
+    const angle =
+        Math.atan2(
+            y2 - y1,
+            x2 - x1
+        );
+
+
+    // ==========================
+    // แว่น
+    // ==========================
+
+    ctx.save();
+
+    ctx.translate(
+        centerX,
+        centerY
+    );
+
+    ctx.rotate(angle);
+
+    ctx.font =
+        `${glassesHeight}px Arial`;
+
+    ctx.textAlign = "center";
+    ctx.textBaseline = "middle";
+
+    ctx.fillText(
+        "🕶️",
+        0,
+        0
+    );
+
+    ctx.restore();
+
+
+    // ==========================
+    // หมวก
+    // ==========================
+
+    const hatX =
+        forehead.x * canvas.width;
+
+    const hatY =
+        forehead.y * canvas.height;
+
+    const hatSize =
+        eyeDistance * 2.2;
+
+
+    ctx.save();
+
+    ctx.translate(
+        hatX,
+        hatY - eyeDistance * 0.8
+    );
+
+    ctx.rotate(angle);
+
+    ctx.font =
+        `${hatSize}px Arial`;
+
+    ctx.textAlign = "center";
+    ctx.textBaseline = "middle";
+
+    ctx.fillText(
+        "🎩",
+        0,
+        0
+    );
+
+    ctx.restore();
+}
+
+
+// ==========================
+// START
+// ==========================
+
+startButton.addEventListener(
+    "click",
+    async () => {
+
+        try {
+
+            await setupFaceTracking();
+
+            await startCamera();
+
+        } catch (error) {
+
+            console.error(error);
+
+            status.innerText =
+                "เปิดกล้องไม่ได้ กรุณาอนุญาต Camera";
+
+        }
+
+    }
+);
+
+</script>
+
+</body>
+</html>
