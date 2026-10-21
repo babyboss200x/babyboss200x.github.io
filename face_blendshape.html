@@ -3,9 +3,10 @@
 <html lang="th">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>MindAR Blendshape</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Boss Face Tracking - MindAR</title>
 
+  <!-- Three.js และ MindAR -->
   <script type="importmap">
   {
     "imports": {
@@ -17,8 +18,15 @@
   </script>
 
   <style>
+    * {
+      box-sizing: border-box;
+    }
+
     body {
       margin: 0;
+      overflow: hidden;
+      background: #111;
+      font-family: Arial, sans-serif;
     }
 
     #container {
@@ -27,27 +35,127 @@
       position: relative;
       overflow: hidden;
     }
+
+    #status {
+      position: absolute;
+      top: 12px;
+      left: 50%;
+      transform: translateX(-50%);
+      z-index: 10;
+      padding: 10px 16px;
+      color: white;
+      background: rgba(0, 0, 0, 0.7);
+      border-radius: 8px;
+      font-size: 14px;
+      text-align: center;
+      max-width: 90%;
+    }
+
+    #controls {
+      position: absolute;
+      z-index: 10;
+      bottom: 16px;
+      left: 50%;
+      transform: translateX(-50%);
+      display: flex;
+      gap: 8px;
+      align-items: center;
+      flex-wrap: wrap;
+      justify-content: center;
+      width: 95%;
+    }
+
+    button {
+      border: 0;
+      border-radius: 8px;
+      padding: 10px 14px;
+      background: #222;
+      color: white;
+      font-size: 14px;
+      cursor: pointer;
+    }
+
+    button:active {
+      background: #555;
+    }
   </style>
 </head>
 
 <body>
-  <div id="container"></div>
+  <div id="container">
+    <div id="status">กำลังโหลดโมเดล...</div>
+
+    <div id="controls">
+      <button id="up">เลื่อนขึ้น</button>
+      <button id="down">เลื่อนลง</button>
+      <button id="smaller">ลดขนาด</button>
+      <button id="bigger">เพิ่มขนาด</button>
+      <button id="reset">รีเซ็ต</button>
+    </div>
+  </div>
 
   <script type="module">
     import * as THREE from 'three';
-    import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
-    import { RoomEnvironment } from 'three/addons/environments/RoomEnvironment.js';
+
+    import { GLTFLoader } from
+      'three/addons/loaders/GLTFLoader.js';
+
+    import { RoomEnvironment } from
+      'three/addons/environments/RoomEnvironment.js';
+
     import { MindARThree } from 'mindar-face-three';
 
+    const container = document.querySelector('#container');
+    const status = document.querySelector('#status');
+
+    // =====================================
+    // ตั้งค่าโมเดลตรงนี้
+    // =====================================
+
+    const MODEL_URL =
+      'https://babyboss200x.github.io/boss09.glb';
+
+    // ปรับขนาดโมเดล
+    let modelScale = 1.0;
+
+    // ปรับตำแหน่งโมเดล
+    let offsetX = 0;
+    let offsetY = -0.2;
+    let offsetZ = 0.1;
+
+    // =====================================
+    // เริ่มระบบติดตามใบหน้า
+    // =====================================
+
     const mindar = new MindARThree({
-      container: document.querySelector('#container')
+      container,
+      maxTrack: 1
     });
 
     const { renderer, scene, camera } = mindar;
 
-    // Environment สำหรับเพิ่มแสงสะท้อนบนโมเดล
-    const pmremGenerator = new THREE.PMREMGenerator(renderer);
+    renderer.setPixelRatio(
+      Math.min(window.devicePixelRatio, 2)
+    );
+
+    renderer.setSize(
+      window.innerWidth,
+      window.innerHeight
+    );
+
+    renderer.outputColorSpace = THREE.SRGBColorSpace;
+    renderer.toneMapping = THREE.ACESFilmicToneMapping;
+    renderer.toneMappingExposure = 1;
+
+    // =====================================
+    // แสงและ Environment
+    // =====================================
+
+    const pmremGenerator =
+      new THREE.PMREMGenerator(renderer);
+
     const roomEnvironment = new RoomEnvironment();
+
     const environmentTarget =
       pmremGenerator.fromScene(roomEnvironment);
 
@@ -57,54 +165,153 @@
     pmremGenerator.dispose();
 
     scene.add(
-      new THREE.HemisphereLight(0xffffff, 0xbbbbff, 1)
+      new THREE.HemisphereLight(
+        0xffffff,
+        0xbbbbff,
+        1.5
+      )
     );
 
-    // โหลดโมเดล boss09.glb
-    const model = await new GLTFLoader().loadAsync(
-      'https://babyboss200x.github.io/boss09.glb'
+    const keyLight = new THREE.DirectionalLight(
+      0xffffff,
+      2
     );
 
-    model.scene.scale.setScalar(2);
+    keyLight.position.set(0, 2, 3);
+    scene.add(keyLight);
 
-    // ผูกโมเดลเข้ากับ Face Anchor
-    mindar.addAnchor(1).group.add(model.scene);
+    // =====================================
+    // โหลดโมเดล
+    // =====================================
 
-    // ค้นหา Mesh ที่รองรับ Morph Targets
-    const meshes = [];
+    let modelRoot = null;
+    let faceAnchor = null;
+    let meshes = [];
 
-    model.scene.traverse(object => {
-      if (
-        object.isMesh &&
-        object.morphTargetDictionary &&
-        object.morphTargetInfluences
-      ) {
-        meshes.push(object);
+    try {
+      status.textContent = 'กำลังโหลด boss09.glb...';
+
+      const loader = new GLTFLoader();
+
+      const gltf = await loader.loadAsync(MODEL_URL);
+
+      modelRoot = gltf.scene;
+
+      // กลุ่มสำหรับปรับตำแหน่งโดยไม่แก้โครงสร้างโมเดล
+      const modelWrapper = new THREE.Group();
+      modelWrapper.add(modelRoot);
+
+      modelRoot.scale.setScalar(modelScale);
+
+      modelWrapper.position.set(
+        offsetX,
+        offsetY,
+        offsetZ
+      );
+
+      faceAnchor = mindar.addAnchor(1);
+      faceAnchor.group.add(modelWrapper);
+
+      // ค้นหา Mesh ที่มี Blendshape
+      modelRoot.traverse((object) => {
+        if (
+          object.isMesh &&
+          object.morphTargetDictionary &&
+          object.morphTargetInfluences
+        ) {
+          meshes.push(object);
+        }
+      });
+
+      status.textContent =
+        `โหลดโมเดลสำเร็จ | Blendshape: ${meshes.length} Mesh`;
+
+      // เริ่มกล้อง
+      await mindar.start();
+
+      status.textContent =
+        'กำลังติดตามใบหน้า';
+
+      // =====================================
+      // ปุ่มปรับตำแหน่ง
+      // =====================================
+
+      function updatePosition() {
+        modelWrapper.position.set(
+          offsetX,
+          offsetY,
+          offsetZ
+        );
+
+        modelWrapper.scale.setScalar(modelScale);
       }
-    });
 
-    await mindar.start();
+      document.querySelector('#up').onclick = () => {
+        offsetY += 0.05;
+        updatePosition();
+      };
 
-    function animate() {
-      const categories =
-        mindar.getLatestEstimate()?.blendshapes?.categories;
+      document.querySelector('#down').onclick = () => {
+        offsetY -= 0.05;
+        updatePosition();
+      };
 
-      for (const mesh of meshes) {
-        for (const { categoryName, score } of categories ?? []) {
-          const index =
-            mesh.morphTargetDictionary[categoryName];
+      document.querySelector('#smaller').onclick = () => {
+        modelScale = Math.max(0.05, modelScale - 0.1);
+        updatePosition();
+      };
 
-          if (index !== undefined) {
-            mesh.morphTargetInfluences[index] = score;
+      document.querySelector('#bigger').onclick = () => {
+        modelScale += 0.1;
+        updatePosition();
+      };
+
+      document.querySelector('#reset').onclick = () => {
+        modelScale = 1.0;
+        offsetX = 0;
+        offsetY = -0.2;
+        offsetZ = 0.1;
+        updatePosition();
+      };
+
+      // =====================================
+      // อัปเดต Blendshape
+      // =====================================
+
+      renderer.setAnimationLoop(() => {
+        const categories =
+          mindar.getLatestEstimate()?.blendshapes?.categories;
+
+        if (categories) {
+          for (const mesh of meshes) {
+            for (const { categoryName, score } of categories) {
+              const index =
+                mesh.morphTargetDictionary[categoryName];
+
+              if (index !== undefined) {
+                mesh.morphTargetInfluences[index] = score;
+              }
+            }
           }
         }
-      }
 
-      renderer.render(scene, camera);
-      requestAnimationFrame(animate);
+        renderer.render(scene, camera);
+      });
+
+    } catch (error) {
+      console.error('Face tracking error:', error);
+
+      status.textContent =
+        'เกิดข้อผิดพลาด: โหลดโมเดลหรือเปิดกล้องไม่สำเร็จ ดู Console เพื่อเช็กสาเหตุ';
     }
 
-    animate();
+    // ปรับขนาดเมื่อเปลี่ยนขนาดหน้าจอ
+    window.addEventListener('resize', () => {
+      renderer.setSize(
+        window.innerWidth,
+        window.innerHeight
+      );
+    });
   </script>
 </body>
 </html>
