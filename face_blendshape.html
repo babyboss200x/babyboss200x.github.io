@@ -45,6 +45,7 @@
 
     const { renderer, scene, camera } = mindar;
 
+    // Environment สำหรับเพิ่มแสงสะท้อนบนโมเดล
     const pmremGenerator = new THREE.PMREMGenerator(renderer);
     const roomEnvironment = new RoomEnvironment();
     const environmentTarget =
@@ -59,15 +60,17 @@
       new THREE.HemisphereLight(0xffffff, 0xbbbbff, 1)
     );
 
-    // โหลดโมเดล boss08.glb จาก GitHub Pages
+    // โหลดโมเดล boss09.glb
     const model = await new GLTFLoader().loadAsync(
-      'https://babyboss200x.github.io/boss08.glb'
+      'https://babyboss200x.github.io/boss09.glb'
     );
 
     model.scene.scale.setScalar(2);
 
+    // ผูกโมเดลเข้ากับ Face Anchor
     mindar.addAnchor(1).group.add(model.scene);
 
+    // ค้นหา Mesh ที่รองรับ Morph Targets
     const meshes = [];
 
     model.scene.traverse(object => {
@@ -88,7 +91,8 @@
 
       for (const mesh of meshes) {
         for (const { categoryName, score } of categories ?? []) {
-          const index = mesh.morphTargetDictionary[categoryName];
+          const index =
+            mesh.morphTargetDictionary[categoryName];
 
           if (index !== undefined) {
             mesh.morphTargetInfluences[index] = score;
