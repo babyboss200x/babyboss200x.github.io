@@ -4,7 +4,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>MindAR Blendshape</title>
+  <title>Boss Face AR</title>
 
   <script type="importmap">
   {
@@ -17,8 +17,12 @@
   </script>
 
   <style>
+    * { box-sizing: border-box; }
+
     body {
       margin: 0;
+      overflow: hidden;
+      background: #111;
     }
 
     #container {
@@ -27,11 +31,42 @@
       position: relative;
       overflow: hidden;
     }
+
+    #status {
+      position: absolute;
+      z-index: 10;
+      top: 12px;
+      left: 5%;
+      width: 90%;
+      padding: 10px;
+      border-radius: 8px;
+      background: rgba(0, 0, 0, 0.7);
+      color: white;
+      text-align: center;
+      font: 14px Arial, sans-serif;
+    }
+
+    #start {
+      position: absolute;
+      z-index: 20;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      padding: 14px 24px;
+      border: 0;
+      border-radius: 10px;
+      background: #00d49b;
+      font-size: 17px;
+      font-weight: bold;
+    }
   </style>
 </head>
 
 <body>
-  <div id="container"></div>
+  <div id="container">
+    <div id="status">พร้อมเปิดกล้อง</div>
+    <button id="start">เปิดกล้อง</button>
+  </div>
 
   <script type="module">
     import * as THREE from 'three';
@@ -39,82 +74,181 @@
     import { RoomEnvironment } from 'three/addons/environments/RoomEnvironment.js';
     import { MindARThree } from 'mindar-face-three';
 
-    const mindar = new MindARThree({
-      container: document.querySelector('#container')
-    });
+    const container = document.querySelector('#container');
+    const status = document.querySelector('#status');
+    const startButton = document.querySelector('#start');
 
-    const { renderer, scene, camera } = mindar;
+    const MODEL_URL =
+      'https://raw.githubusercontent.com/babyboss200x/babyboss200x.github.io/main/boss17.glb';
 
-    // Environment
-    const pmremGenerator = new THREE.PMREMGenerator(renderer);
-    const roomEnvironment = new RoomEnvironment();
-    const environmentTarget =
-      pmremGenerator.fromScene(roomEnvironment);
+    let mindar;
+    let running = false;
 
-    scene.environment = environmentTarget.texture;
+    // ===== ปรับตำแหน่งได้จากส่วนนี้ =====
+    const TARGET_SIZE = 0.20; // ลดค่านี้เพื่อให้โมเดลเล็กลง
+    const OFFSET_X = 0.00;    // ซ้าย / ขวา
+    const OFFSET_Y = -0.08;   // เลื่อนลง
+    const OFFSET_Z = 0.00;    // เข้า / ออกจากใบหน้า
+    // ===================================
 
-    roomEnvironment.dispose();
-    pmremGenerator.dispose();
-
-    scene.add(
-      new THREE.HemisphereLight(0xffffff, 0xbbbbff, 1)
-    );
-
-    // โหลดโมเดล boss17.glb
-    const gltf = await new GLTFLoader().loadAsync(
-      'https://raw.githubusercontent.com/babyboss200x/babyboss200x.github.io/main/boss17.glb'
-    );
-
-    const model = gltf.scene;
-
-    // ปรับขนาดและตำแหน่งโมเดล
-    model.scale.setScalar(0.8);
-    model.position.set(0, -0.15, 0);
-    model.rotation.set(0, 0, 0);
-
-    // ยึดโมเดลกับใบหน้า
-    const anchor = mindar.addAnchor(1);
-    anchor.group.add(model);
-
-    // ค้นหา Blendshape
-    const meshes = [];
-
-    model.traverse(object => {
-      if (
-        object.isMesh &&
-        object.morphTargetDictionary &&
-        object.morphTargetInfluences
-      ) {
-        meshes.push(object);
-        console.log(
-          'Blendshapes:',
-          Object.keys(object.morphTargetDictionary)
-        );
-      }
-    });
-
-    await mindar.start();
-
-    function animate() {
-      const categories =
-        mindar.getLatestEstimate()?.blendshapes?.categories;
-
-      for (const mesh of meshes) {
-        for (const { categoryName, score } of categories ?? []) {
-          const index =
-            mesh.morphTargetDictionary[categoryName];
-
-          if (index !== undefined) {
-            mesh.morphTargetInfluences[index] = score;
-          }
-        }
-      }
-
-      renderer.render(scene, camera);
-      requestAnimationFrame(animate);
+    function setStatus(message) {
+      status.textContent = message;
     }
 
-    animate();
+    startButton.addEventListener('click', async () => {
+      if (running) return;
+
+      startButton.disabled = true;
+      setStatus('กำลังเปิดกล้อง...');
+
+      try {
+        mindar = new MindARThree({
+          container,
+          maxTrack: 1,
+          uiLoading: 'no',
+          uiScanning: 'no',
+          uiError: 'no'
+        });
+
+        const { renderer, scene, camera } = mindar;
+
+        // แสง
+        const pmrem = new THREE.PMREMGenerator(renderer);
+        const environment = new RoomEnvironment();
+        const envMap = pmrem.fromScene(environment);
+
+        scene.environment = envMap.texture;
+        environment.dispose();
+        pmrem.dispose();
+
+        scene.add(
+          new THREE.HemisphereLight(0xffffff, 0xbbbbff, 1.5)
+        );
+
+        const light = new THREE.DirectionalLight(0xffffff, 2);
+        light.position.set(0, 1, 2);
+        scene.add(light);
+
+        // เริ่มกล้อง
+        await mindar.start();
+        running = true;
+        startButton.style.display = 'none';
+
+        // แสดงกล้องต่อเนื่อง แม้ระหว่างโหลดโมเดล
+        renderer.setAnimationLoop(() => {
+          renderer.render(scene, camera);
+        });
+
+        setStatus('กล้องเปิดแล้ว กำลังโหลด boss17.glb...');
+
+        // โหลดโมเดล
+        const gltf = await new GLTFLoader().loadAsync(MODEL_URL);
+        const model = gltf.scene;
+
+        // คำนวณขอบเขตจริงของโมเดล
+        model.updateMatrixWorld(true);
+
+        const bounds = new THREE.Box3().setFromObject(model);
+        const size = bounds.getSize(new THREE.Vector3());
+        const center = bounds.getCenter(new THREE.Vector3());
+
+        const largestDimension = Math.max(size.x, size.y, size.z);
+
+        if (!Number.isFinite(largestDimension) ||
+            largestDimension <= 0) {
+          throw new Error('ไม่สามารถคำนวณขนาดโมเดลได้');
+        }
+
+        // สร้างกลุ่มแยก เพื่อปรับขนาดและตำแหน่งได้ง่าย
+        const fitGroup = new THREE.Group();
+
+        // ทำให้ขนาดด้านที่ใหญ่ที่สุดเท่ากับ TARGET_SIZE
+        const fitScale = TARGET_SIZE / largestDimension;
+        fitGroup.scale.setScalar(fitScale);
+
+        // จัดกึ่งกลางโมเดลภายในกลุ่ม
+        model.position.set(
+          -center.x,
+          -center.y,
+          -center.z
+        );
+
+        fitGroup.add(model);
+
+        // เลื่อนทั้งกลุ่มลงและยึดกับกลางใบหน้า
+        fitGroup.position.set(
+          OFFSET_X,
+          OFFSET_Y,
+          OFFSET_Z
+        );
+
+        const anchor = mindar.addAnchor(168);
+        anchor.group.add(fitGroup);
+
+        // ตรวจสอบ Morph Targets
+        const meshes = [];
+
+        model.traverse(object => {
+          if (
+            object.isMesh &&
+            object.morphTargetDictionary &&
+            object.morphTargetInfluences
+          ) {
+            meshes.push(object);
+
+            console.log(
+              'Morph Targets:',
+              Object.keys(object.morphTargetDictionary)
+            );
+          }
+        });
+
+        // แสดงสถานะและ Blendshape
+        setStatus(
+          meshes.length
+            ? 'สำเร็จ! ขยับใบหน้าเพื่อทดสอบ'
+            : 'โมเดลแสดงแล้ว แต่ไม่มี Blendshape ที่รองรับ'
+        );
+
+        // อัปเดต Blendshape ระหว่างติดตามใบหน้า
+        renderer.setAnimationLoop(() => {
+          const categories =
+            mindar.getLatestEstimate()?.blendshapes?.categories ?? [];
+
+          for (const mesh of meshes) {
+            for (const { categoryName, score } of categories) {
+              const index =
+                mesh.morphTargetDictionary[categoryName];
+
+              if (index !== undefined) {
+                mesh.morphTargetInfluences[index] = score;
+              }
+            }
+          }
+
+          renderer.render(scene, camera);
+        });
+
+        console.log('ขนาดโมเดลเดิม:', size);
+        console.log('ขนาดหลังปรับ:', TARGET_SIZE);
+        console.log('สเกลที่ใช้:', fitScale);
+
+      } catch (error) {
+        console.error(error);
+        setStatus('เกิดข้อผิดพลาด: ' + error.message);
+        startButton.disabled = false;
+        startButton.style.display = 'block';
+
+        if (mindar) {
+          try {
+            await mindar.stop();
+          } catch (_) {}
+          mindar = null;
+        }
+
+        running = false;
+      }
+    });
   </script>
 </body>
 </html>
