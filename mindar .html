@@ -1,0 +1,71 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+  <title>MindAR - Multi Image Target</title>
+  <script src="https://aframe.io/releases/1.6.0/aframe.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/mind-ar@1.2.5/dist/mindar-image-aframe.prod.js"></script>
+  <script src="https://cdn.jsdelivr.net/gh/c-frame/aframe-extras@7.5.4/dist/aframe-extras.min.js"></script>
+  <script>
+    // ปรับขนาดโมเดลอัตโนมัติให้พอดี marker + เล่นอนิเมชัน
+    AFRAME.registerComponent('auto-fit', {
+      schema: { size: { default: 0.8 } },
+      init: function () {
+        this.el.addEventListener('model-loaded', (e) => {
+          const m = e.detail.model, THREE = AFRAME.THREE;
+          const box = new THREE.Box3().setFromObject(m);
+          const s = box.getSize(new THREE.Vector3());
+          const maxd = Math.max(s.x, s.y, s.z) || 1;
+          this.el.object3D.scale.setScalar(this.data.size / maxd);
+          if (m.animations && m.animations.length) {
+            this.mixer = new THREE.AnimationMixer(m);
+            const clip = m.animations.find(a => /Idle$/i.test(a.name))
+                      || m.animations.find(a => /(Walk|Swim|Run)$/i.test(a.name))
+                      || m.animations[0];
+            this.mixer.clipAction(clip).play();
+          }
+        });
+      },
+      tick: function (t, dt) { if (this.mixer) this.mixer.update(dt / 1000); }
+    });
+  </script>
+</head>
+
+<body style="margin:0; overflow:hidden;">
+<a-scene
+  mindar-image="imageTargetSrc: https://babyboss200x.github.io/targets.mind; maxTrack: 3;"
+  color-space="sRGB"
+  renderer="colorManagement: true, physicallyCorrectLights"
+  vr-mode-ui="enabled: false"
+  device-orientation-permission-ui="enabled: false">
+
+  <a-assets>
+    <a-asset-item id="model0" src="https://babyboss200x.github.io/raze_fighting_stance.glb"></a-asset-item>
+    <a-asset-item id="model1" src="https://babyboss200x.github.io/cat_business.glb"></a-asset-item>
+    <a-asset-item id="model2" src="https://babyboss200x.github.io/fish.glb"></a-asset-item>
+  </a-assets>
+
+  <a-light type="ambient" intensity="1.2"></a-light>
+  <a-light type="directional" intensity="0.8" position="1 2 1"></a-light>
+
+  <!-- Target 0 : Van Gogh -> raze -->
+  <a-entity mindar-image-target="targetIndex: 0">
+    <a-gltf-model src="#model0" animation-mixer rotation="90 0 0" scale="2 2 2" position="0 0 0"></a-gltf-model>
+  </a-entity>
+
+  <!-- Target 1 : business cat -> Quaternius cat (CC0) -->
+  <a-entity mindar-image-target="targetIndex: 1">
+    <a-gltf-model src="#model1" auto-fit rotation="90 0 0" position="0 0 0"></a-gltf-model>
+  </a-entity>
+
+  <!-- Target 2 : discus fish -> Quaternius fish (CC0) -->
+  <a-entity mindar-image-target="targetIndex: 2">
+    <a-gltf-model src="#model2" auto-fit rotation="90 0 0" position="0 0 0"></a-gltf-model>
+  </a-entity>
+
+  <a-camera position="0 0 0" look-controls="enabled: false"></a-camera>
+
+</a-scene>
+</body>
+</html>
