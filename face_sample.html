@@ -16,20 +16,21 @@
     <a-asset-item id="headModel" src="https://babyboss200x.github.io/witch_hat.glb"></a-asset-item>
   </a-assets>
 
-
-  <!-- Anchor กับตำแหน่งบนใบหน้า -->
+  <!-- แว่น: เกาะดั้งจมูก (anchor 168) -->
   <a-entity mindar-face-target="anchorIndex: 168">
-    <a-gltf-model 
-        rotation="0 0 0" position="0 0 0" scale="0.008 0.008 0.008" 
+    <a-gltf-model
+        rotation="0 0 0" position="0 0 0" scale="0.008 0.008 0.008"
         src="#glassesModel">
     </a-gltf-model>
   </a-entity>
 
-
-
-
-
-
+  <!-- หมวก: เกาะหว่างคิ้ว (anchor 10) แล้วเลื่อนขึ้นไปบนหัว -->
+  <a-entity mindar-face-target="anchorIndex: 10">
+    <a-gltf-model
+        rotation="0 0 0" position="0 0.2 0" scale="0.3 0.3 0.3"
+        src="#headModel">
+    </a-gltf-model>
+  </a-entity>
 
   <a-camera active="false" position="0 0 0"> </a-camera>
 
